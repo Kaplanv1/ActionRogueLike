@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "SCharacter.generated.h"
 
+class USInteractionComponent;
 struct FInputActionInstance;
 struct FInputActionValue;
 class USpringArmComponent;
@@ -22,13 +23,34 @@ public:
 	// Sets default values for this character's properties
 	ASCharacter();
 
+
 protected:
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	TSubclassOf<AActor> ProjectileClass;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+	UAnimMontage* PrimaryAttackMontage;
+
+	FTimerHandle TimerHandle_PrimaryAttack;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+		TSubclassOf<AActor> BlackHoleClass;;
+
+
+protected:
+
+	//Components
 
 	UPROPERTY(VisibleAnywhere)
 	USpringArmComponent* SpringArmComp;
 	UPROPERTY(VisibleAnywhere)
 	 UCameraComponent* CameraComp;
 
+	UPROPERTY(VisibleAnywhere)
+		USInteractionComponent* InteractionComp;
+
+	//Inputs
 
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 		UInputMappingContext* DefaultMappingContext;
@@ -39,6 +61,18 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 		UInputAction* Input_LookMouse;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+		UInputAction* Input_Jump;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+		UInputAction* Input_PrimaryAttack;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+		UInputAction* Input_PrimaryInteraction;
+
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+		UInputAction* Input_BlackHoleAttack;
+
 
 
 
@@ -46,6 +80,10 @@ protected:
 
 	void Move(const FInputActionInstance& Instance);
 	void LookMouse(const FInputActionValue& InputValue);
+	void PrimaryAttack();
+	void PrimaryInteract();
+	void PrimaryAttack_TimeElapsed();
+	void BlackHoleAttack();
 
 public:	
 	// Called every frame
