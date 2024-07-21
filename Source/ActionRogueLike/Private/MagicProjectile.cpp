@@ -2,17 +2,41 @@
 
 
 #include "MagicProjectile.h"
-#include "GameFramework/ProjectileMovementComponent.h"
+#include "SAttributeComponent.h"
+#include "Components/SphereComponent.h"
+
 
 // Sets default values
 AMagicProjectile::AMagicProjectile() 
 {
+    SphereComp->SetCollisionProfileName("Projectile");
+    SphereComp->SetSphereRadius(20.0f);
+    SphereComp->OnComponentBeginOverlap.AddDynamic(this, &AMagicProjectile::OnActorOverlap);
 
-	MovementComp->InitialSpeed = 2000.0f;
-    MovementComp->bRotationFollowsVelocity = true;
-    MovementComp->bInitialVelocityInLocalSpace = true;
-    MovementComp->ProjectileGravityScale = 0.0f;
+    DamageAmount = 20.0f;
 
 }
+
+void AMagicProjectile::OnActorOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
+	bool bFromSweep, const FHitResult& SweepResult)
+{
+    if(OtherActor && OtherActor != GetInstigator())
+    {
+        USAttributeComponent* AttributeComponent = Cast<USAttributeComponent>(OtherActor->GetComponentByClass(USAttributeComponent::StaticClass()));
+        if(AttributeComponent)
+        {
+
+            // minus in front of DamageAmount to apply the change as damage, not healing
+            AttributeComponent->ApplyHealthChange(-DamageAmount);
+
+            // Only explode when we hit something valid
+           // Explode();
+	        
+        }
+        Explode();
+
+    }
+}
+
 
 

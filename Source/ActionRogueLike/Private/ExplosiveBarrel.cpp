@@ -34,11 +34,11 @@ void AExplosiveBarrel::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	//function works when on component hits thanks to ADD DYNAMIC
-	BarrelMesh->OnComponentHit.AddDynamic(this, &AExplosiveBarrel::Explode);
+	BarrelMesh->OnComponentBeginOverlap.AddDynamic(this, &AExplosiveBarrel::Explode);
 
 }
 
-void AExplosiveBarrel::Explode(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
+void AExplosiveBarrel::Explode(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	if (OtherActor && OtherActor->IsA(AMagicProjectile::StaticClass()))
 	{

@@ -9,7 +9,8 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "SInteractionComponent.h"
-#include "Kismet/KismetMathLibrary.h"
+#include "SAttributeComponent.h"
+
 
 
 // Sets default values
@@ -25,13 +26,17 @@ ASCharacter::ASCharacter()
 	CameraComp = CreateDefaultSubobject<UCameraComponent>("CameraComp");
 	CameraComp->SetupAttachment(SpringArmComp);
 
-	GetCharacterMovement()->bOrientRotationToMovement = true;
+	InteractionComp = CreateDefaultSubobject<USInteractionComponent>("InteractionComp");
+	AttributeComp = CreateDefaultSubobject<USAttributeComponent>("AttributeComponent");
 
+	GetCharacterMovement()->bOrientRotationToMovement = true;
 	bUseControllerRotationYaw = false;
 	bUseControllerRotationPitch = false;
 	bUseControllerRotationRoll = false;
 
-	InteractionComp = CreateDefaultSubobject<USInteractionComponent>("InteractionComp");
+	
+
+	
 
 
 }
@@ -75,6 +80,7 @@ void ASCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 		EnhancedInputComponent->BindAction(Input_Jump, ETriggerEvent::Triggered, this, &ASCharacter::Jump);
 		EnhancedInputComponent->BindAction(Input_PrimaryInteraction, ETriggerEvent::Triggered, this, &ASCharacter::PrimaryInteract);
 		EnhancedInputComponent->BindAction(Input_BlackHoleAttack, ETriggerEvent::Triggered, this, &ASCharacter::BlackHoleAttack);
+		EnhancedInputComponent->BindAction(Input_DashProjectile, ETriggerEvent::Triggered, this, &ASCharacter::DashProjectile);
 
 
 	}
@@ -110,7 +116,7 @@ void ASCharacter::LookMouse(const FInputActionValue& InputValue)
 
 void ASCharacter::PrimaryAttack()
 {
-	if (PrimaryAttackMontage)
+	if (ensure(PrimaryAttackMontage))
 	{
 
 		PlayAnimMontage(PrimaryAttackMontage);
@@ -123,45 +129,9 @@ void ASCharacter::PrimaryAttack()
 
 void ASCharacter::PrimaryAttack_TimeElapsed()
 {
-
-	FHitResult Hit;
-
-	FVector Start = CameraComp->GetComponentLocation();
-
-	FVector End = Start + (CameraComp->GetComponentRotation().Vector() * 10000);
-
-	FCollisionObjectQueryParams QueryParams;
-	QueryParams.AddObjectTypesToQuery(ECC_WorldDynamic);
-	QueryParams.AddObjectTypesToQuery(ECC_WorldStatic);
-	QueryParams.AddObjectTypesToQuery(ECC_PhysicsBody);
-
-	GetWorld()->LineTraceSingleByObjectType(Hit, Start, End, QueryParams);
-
-	FVector MuzzleLocation = GetMesh()->GetSocketLocation("Muzzle_01");
-
-	FTransform SpawnTM;
-
-	if (Hit.bBlockingHit)
-	{
-		FRotator SpawnRot = UKismetMathLibrary::FindLookAtRotation(MuzzleLocation, Hit.ImpactPoint);
-		SpawnTM = FTransform(SpawnRot, MuzzleLocation);
-	}
-	else
-	{
-		SpawnTM = FTransform(GetControlRotation(), MuzzleLocation);
-
-	}
-
-	FActorSpawnParameters SpawnParams;
-
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	SpawnParams.Instigator = this;
-
-	GetWorld()->SpawnActor<AActor>(ProjectileClass, SpawnTM, SpawnParams);
-
-
-
+	SpawnProjectile(ProjectileClass);
 }
+
 
 void ASCharacter::PrimaryInteract()
 {
@@ -174,12 +144,84 @@ void ASCharacter::PrimaryInteract()
 
 void ASCharacter::BlackHoleAttack()
 {
-	FTransform SpawnTM = FTransform(GetControlRotation(), GetActorLocation());
+	if(BlackHoleAttackMontage)
+	{
+		PlayAnimMontage(BlackHoleAttackMontage);
 
-	FActorSpawnParameters SpawnParams;
+		GetWorldTimerManager().SetTimer(TimerHandle_BlackHoleAttack, this, &ASCharacter::BlackHoleAttack_TimeElapsed, 0.24f);
 
-	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-	SpawnParams.Instigator = this;
+	}
+	
+}
 
-	GetWorld()->SpawnActor<AActor>(BlackHoleClass, SpawnTM, SpawnParams);
+void ASCharacter::BlackHoleAttack_TimeElapsed()
+{
+
+	SpawnProjectile(BlackHoleClass);
+}
+
+void ASCharacter::DashProjectile()
+{
+	if (DashMontage)
+	{
+		PlayAnimMontage(DashMontage);	
+
+		GetWorldTimerManager().SetTimer(TimerHandle_DashProjectile, this, &ASCharacter::DashProjectile_TimeElapsed, 0.2f);
+
+	}
+
+}
+
+void ASCharacter::DashProjectile_TimeElapsed()
+{
+	SpawnProjectile(DashProjectileClass);
+}
+
+
+void ASCharacter::SpawnProjectile(TSubclassOf<AActor> ClassToSpawn)
+{
+	if (ensureAlways(ClassToSpawn))
+	{
+		FVector HandLocation = GetMesh()->GetSocketLocation("Muzzle_01");
+
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+		SpawnParams.Instigator = this;
+
+		FHitResult Hit;
+		FVector TraceStart = CameraComp->GetComponentLocation();
+		// endpoint far into the look-at distance (not too far, still adjust somewhat towards crosshair on a miss)
+		FVector TraceEnd = CameraComp->GetComponentLocation() + (GetControlRotation().Vector() * 5000);
+
+		FCollisionShape Shape;
+		Shape.SetSphere(20.0f);
+
+		// Ignore Player
+		FCollisionQueryParams Params;
+		Params.AddIgnoredActor(this);
+		Params.AddIgnoredActor(GetInstigator());
+
+		FCollisionObjectQueryParams ObjParams;
+		ObjParams.AddObjectTypesToQuery(ECC_WorldDynamic);
+		ObjParams.AddObjectTypesToQuery(ECC_WorldStatic);
+		ObjParams.AddObjectTypesToQuery(ECC_Pawn);
+		ObjParams.AddObjectTypesToQuery(ECC_PhysicsBody);
+
+		FRotator ProjRotation;
+		// true if we got to a blocking hit (Alternative: SweepSingleByChannel with ECC_WorldDynamic)
+		if (GetWorld()->SweepSingleByObjectType(Hit, TraceStart, TraceEnd, FQuat::Identity, ObjParams, Shape, Params))
+		{
+			// Adjust location to end up at crosshair look-at
+			ProjRotation = FRotationMatrix::MakeFromX(Hit.ImpactPoint - HandLocation).Rotator();
+		}
+		else
+		{
+			// Fall-back since we failed to find any blocking hit
+			ProjRotation = FRotationMatrix::MakeFromX(TraceEnd - HandLocation).Rotator();
+		}
+
+
+		FTransform SpawnTM = FTransform(ProjRotation, HandLocation);
+		GetWorld()->SpawnActor<AActor>(ClassToSpawn, SpawnTM, SpawnParams);
+	}
 }

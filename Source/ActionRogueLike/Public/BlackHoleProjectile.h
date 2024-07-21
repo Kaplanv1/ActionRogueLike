@@ -8,7 +8,7 @@
 
 class URadialForceComponent;
 /**
- * 
+ *
  */
 UCLASS()
 class ACTIONROGUELIKE_API ABlackHoleProjectile : public AProjectileBase
@@ -20,7 +20,7 @@ public:
 
 	ABlackHoleProjectile();
 
-	UPROPERTY(BlueprintReadOnly,VisibleAnywhere)
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere)
 		URadialForceComponent* RadialForce;
 
 protected:
@@ -29,7 +29,15 @@ protected:
 
 	FTimerHandle TimerHandle_Destroy;
 
+	UFUNCTION(BlueprintCallable)
 	void DestroyBlackHole();
+
+	UFUNCTION(BlueprintCallable)
+	void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+
+	virtual void PostInitializeComponents() override;
+
+
 
 public:
 	// Called every frame

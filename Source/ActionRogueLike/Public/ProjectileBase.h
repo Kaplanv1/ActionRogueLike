@@ -10,7 +10,7 @@ class USphereComponent;
 class UProjectileMovementComponent;
 class UParticleSystemComponent;
 
-UCLASS(Abstract)
+UCLASS(ABSTRACT)
 class ACTIONROGUELIKE_API AProjectileBase : public AActor
 {
 	GENERATED_BODY()
@@ -28,13 +28,21 @@ protected:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere)
 		UParticleSystemComponent* EffectComp;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Effects")
+		UParticleSystem* ImpactVFX;
+
+	UFUNCTION()
+		virtual void OnActorHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 
-	// Called when the game starts or when spawned
-	virtual void BeginPlay() override;
+	// BlueprintNativeEvent = C++ base implementation, can be expanded in Blueprints
+	// BlueprintCallable to allow child classes to trigger explosions
+	UFUNCTION(BlueprintCallable, BlueprintNativeEvent)
+		void Explode();
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+	virtual void PostInitializeComponents() override;
+
+	
+
 
 };

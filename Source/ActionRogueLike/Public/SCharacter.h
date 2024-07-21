@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "SCharacter.generated.h"
 
+class USAttributeComponent;
 class USInteractionComponent;
 struct FInputActionInstance;
 struct FInputActionValue;
@@ -37,6 +38,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Attack")
 		TSubclassOf<AActor> BlackHoleClass;;
 
+	UPROPERTY(EditAnywhere, Category = "Attack")
+		UAnimMontage* BlackHoleAttackMontage;
+
+	FTimerHandle TimerHandle_BlackHoleAttack;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+		TSubclassOf<AActor> DashProjectileClass;;
+
+	UPROPERTY(EditAnywhere, Category = "Attack")
+		UAnimMontage* DashMontage;
+
+	FTimerHandle TimerHandle_DashProjectile;
 
 protected:
 
@@ -49,6 +62,9 @@ protected:
 
 	UPROPERTY(VisibleAnywhere)
 		USInteractionComponent* InteractionComp;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category="Components")
+		USAttributeComponent* AttributeComp;
 
 	//Inputs
 
@@ -73,6 +89,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
 		UInputAction* Input_BlackHoleAttack;
 
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+		UInputAction* Input_DashProjectile;
+
 
 
 
@@ -84,6 +103,10 @@ protected:
 	void PrimaryInteract();
 	void PrimaryAttack_TimeElapsed();
 	void BlackHoleAttack();
+	void BlackHoleAttack_TimeElapsed();
+	void DashProjectile();
+	void DashProjectile_TimeElapsed();
+	void SpawnProjectile(TSubclassOf<AActor> ClassToSpawn);
 
 public:	
 	// Called every frame
